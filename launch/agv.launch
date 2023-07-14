@@ -1,0 +1,70 @@
+<launch>
+   <arg name="name_seri" default=""/> 
+   <arg name="mode" default=""/> 
+   <arg name="viewrviz" default="false"/> 
+	<!-- view rviz mvibot-->    
+		<node if="$(arg viewrviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find mvibot)/launch/config.rviz"/>	
+	<!---->
+
+	<!-- robot tf frame for mvibot-->
+		<param name="robot_description" command="xacro --inorder '$(find agv)/urdf/agv.urdf'"/> 
+		<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true">
+		<param name="use_tf_static" value="true"/>
+		<param name="ignore_timestamp" value="true"/>
+		</node>
+        <!----> 
+
+		<node pkg="laser_scan_matcher" type="laser_scan_matcher_node" name="laser_scan_matcher" output="screen" respawn="true">
+
+                <param name="fixed_frame" value="odom" />
+                <param name="base_frame" value="base_link" />
+                <remap from="scan" to="/scan" />
+                <param name="publish_tf" value="true" />
+                <param name="use_imu" value="false" />
+                <param name="use_odom" value="true" />
+                <param name="use_vel" value="false" />
+                <param name="publish_pose" value="false" />
+                <param name="publish_pose_stamped" value="false" />
+				<param name="max_linear_correction" value="0.1" />
+				<param name="max_angular_correction_deg" value="5" />
+                <remap from="odom" to="/odom" />
+	   </node>
+	    
+		<node name="tf2_web_republisher" pkg="tf2_web_republisher" type="tf2_web_republisher" required="true"/>	
+    	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>	
+
+
+
+		<node if="$(eval arg('mode') == 'mapping')"  pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+			<param name="map_update_interval" value="5.0"/>
+			<param name="maxUrange" value="2.0"/>
+			<param name="maxRange" value="8.0"/>
+			<param name="linearUpdate" value="0.05"/>
+			<param name="angularUpdate" value="0.5"/>
+		</node>
+
+
+		
+	<node if="$(eval arg('mode') == 'navigation')"  name="map_server" pkg="map_server" type="map_server" args="$(find agv)/maps/map1.yaml"/>
+	
+	<node if="$(eval arg('mode') == 'navigation')" pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+  	  	<rosparam file="$(find agv)/cfg/costmap_common_params.yaml" command="load" ns="global_costmap" />
+  	 	<rosparam file="$(find agv)/cfg/costmap_common_params.yaml" command="load" ns="local_costmap" />
+  		<rosparam file="$(find agv)/cfg/local_costmap_params.yaml" command="load" />
+  		<rosparam file="$(find agv)/cfg/global_costmap_params.yaml" command="load" />
+  		<rosparam file="$(find agv)/cfg/dwa_local_planner_params.yaml" command="load" />
+		<param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
+		<rosparam file="$(find agv)/cfg/move_base.yaml"  command="load" />
+		<param name="clearing_rotation_allowed" value="false" /> <!-- Nox is able to rotate in place -->
+	</node>
+	
+	<node  if="$(eval arg('mode') == 'navigation')" name="amcl"  pkg="amcl"  type="amcl" output="screen"  respawn="true">
+			<remap from="scan" to="/scan"/>
+			<remap from="map"  to="/map" />
+			<remap from="initialpose"  to="initialpose" />	
+    </node>
+
+
+
+</launch>
+
