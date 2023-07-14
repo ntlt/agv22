@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<script src="src/jquery.min.js"></script>
+<script type="text/javascript" src="src/three.min.js"></script>
+<script type="text/javascript" src="src/eventemitter2.min.js"></script>
+<script type="text/javascript" src="src/roslib.min.js"></script>
+<script type="text/javascript" src="src/ros3d.min.js"></script>
+<script type="text/javascript" src="src/nipplejs.js"></script>
+<script type="text/javascript" src="src/easeljs.min.js"></script>
+<script type="text/javascript" src="src/ros2d.min.js"></script>
+
+<script src="src/three.js"></script>
+<script src="src/STLLoader.js"></script>
+<script src="src/eventemitter2.js"></script>
+<script src="src/ColladaLoader.js"></script>
+
+<script src="src/roslib.js"></script>
+<script src="src/ros3d.js"></script>
+
+<script src="ip.js"></script>
+<script src="ros1.js"></script>
+<script type="text/javascript" type="text/javascript">
+   var pose,pose_pub,pose_msg
+   var point,point_pub,point_msg
+   var x=0,y=0,z=0,w=1
+   var a=12;
+   function display_pose(x,y,z,w)
+   {
+      pose_msg.pose.position.x=x;
+      pose_msg.pose.position.y=y;
+      pose_msg.pose.position.z=0;
+      pose_msg.pose.orientation.x=0;
+      pose_msg.pose.orientation.y=0;
+      pose_msg.pose.orientation.z=z;
+      pose_msg.pose.orientation.w=w;
+      pose_pub.publish(pose_msg);
+   }
+   function display_point(x,y)
+   {
+      point_msg.point.x=x;
+      point_msg.point.y=y;
+      point_pub.publish(point_msg);
+   }
+   function range_(){
+      document.getElementById("in_x").value=document.getElementById("range_x").value;
+      document.getElementById("in_y").value=document.getElementById("range_y").value;
+      document.getElementById("in_yaw").value=document.getElementById("range_yaw").value;
+      x=Number(document.getElementById("range_x").value);
+      y=Number(document.getElementById("range_y").value);
+      z=Math.sin(Number(document.getElementById("range_yaw").value)/180*Math.PI/2);
+      w=Math.cos(Number(document.getElementById("range_yaw").value)/180*Math.PI/2);
+      display_pose(x,y,z,w);
+      display_point(x,y);
+   }
+   function in_(){
+     document.getElementById("range_x").value= document.getElementById("in_x").value;
+     document.getElementById("range_y").value= document.getElementById("in_y").value;
+     document.getElementById("range_yaw").value= document.getElementById("in_yaw").value;
+     x=Number(document.getElementById("in_x").value);
+     y=Number(document.getElementById("in_y").value);
+     z=Math.sin(Number(document.getElementById("in_yaw").value)/180*Math.PI/2);
+     w=Math.cos(Number(document.getElementById("in_yaw").value)/180*Math.PI/2);
+     display_pose(x,y,z,w);
+     display_point(x,y);
+   }
+   function save_point(){
+      alert("Save Point:"+x+"|"+y+"|"+z+"|"+w);
+   }
+   function run_map(){
+      alert("Run Map:"+document.getElementById("map_name").value);
+   }
+   function run_test(){
+      alert("Run Test:"+x+"|"+y+"|"+z+"|"+w);
+      //display_pose(x,y,z,w);
+      //display_point(x,y);
+      var pose_set = new ROSLIB.Message({
+         data:"1@("+x+"|"+y+"|"+z+"|"+w+")@",
+      });
+      data_co.publish(pose_set);
+   }
+   function run_stop(){
+      
+      var stop_set = new ROSLIB.Message({
+         data:"2",
+      });
+      stop_mis.publish(stop_set);
+      alert("Stop");
+   }
+   function running(){
+      var coniset = new ROSLIB.Message({
+         data:"1",
+      });
+      stop_new.publish(coniset); 
+      alert("Continue");
+      //aleart(run_con.name);
+   }
+   window.onload = function () {
+      connecting();     // connecting ros server
+      init('192.168.1.0');         // connect via ip 
+      // display point
+      point = new ROS3D.Point({
+         ros : ros,
+         rootObject : viewer.scene,
+         tfClient : tfClient,
+         topic: "/point_pub",
+         color: 0xCD853F,
+         queue_size: 1,
+         throttle_rate: 1000,	
+         radius: 0.25,
+      });
+      point_pub = new ROSLIB.Topic({
+        ros : ros,
+        name : "/point_pub",
+        messageType : 'geometry_msgs/PointStamped',
+        queue_size: 1,
+      });
+      point_msg = new ROSLIB.Message({
+         header: {
+            frame_id: "/map",
+          },
+         point: {
+            x: 0,
+            y: 0,
+            z: 0,
+          }
+      });
+      //
+
+      // display pose
+      pose = new ROS3D.Pose({
+         ros:ros,
+         rootObject : viewer.scene,
+         tfClient : tfClient,
+         topic: "/pose_pub",
+         headDiameter: 0.5,
+         shaftDiameter:0.1,
+         length: 2,
+      });
+      pose_pub = new ROSLIB.Topic({
+        ros : ros,
+        name : "/pose_pub",
+        messageType : 'geometry_msgs/PoseStamped',
+        queue_size: 1,
+      });
+      pose_msg = new ROSLIB.Message({
+         header: {
+            frame_id: "/map",
+          },
+          pose: {
+            position:{
+               x:0,
+               y:0,
+               z:0,
+            },
+            orientation:{
+               x:0,
+               y:0,
+               z:0,
+               w:1,
+            },
+          }
+      });
+      //
+      // // disable element
+      // document.getElementById("direction").style.visibility = 'visible';
+      // var nodes = document.getElementById("core").getElementsByTagName('*');
+      // for(var i = 0; i < nodes.length; i++){
+      //    nodes[i].disabled = false;
+      // }
+      // display_pose(x,y,z,w);
+      // display_point(x,y);
+
+      // // check map exit
+      // var array = ['map1','map2','map3'];
+      // //Create and append the optionstiti
+      // for (var i = 0; i < array.length; i++) {
+      //    var option = document.createElement("option");
+      //    option.value = array[i];
+      //    option.text = array[i];
+      //    document.getElementById("map_name").appendChild(option);
+      // }
+
+   }
+   function test(){
+      display_pose(x,y,z,w);
+      display_point(x,y);
+   }
+</script>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MviBot</title>
+<link rel="icon" href="./resources/image/logo.png">
+<style>
+   .in_ {
+        position:relative;
+        left: 0px;
+        width: 100px;
+        font-size: 30px;
+    }
+    .range_ {
+        position:relative;
+        left:  0px;
+        width: 600px;
+    }
+    .row{
+         position:relative;
+         top: 40px;
+    }
+    .row1{
+         position:relative;
+         top: 10px;
+         font-size: 20px;
+    }
+</style>
+</head>
+<body>
+<div id="zone_joystick"></div>   
+
+<div id="direction" style="position: absolute; top: 325px; left: 1420px; visibility: hidden; z-index: -2;">
+   <div>
+      <img src="./resources/image/Picture4.png" alt="Logo" width="50px" height="50px" style="position: absolute; top: -150px; left: 0px;">  
+   </div>
+   <div>
+      <img src="./resources/image/Picture6.png" alt="Logo" width="50px" height="50px" style="position: absolute; top: 150px; left: 0px;">  
+   </div>
+   <div>
+      <img src="./resources/image/Picture5.png" alt="Logo" width="50px" height="50px" style="position: absolute; top: 0px; left: -150px;">  
+   </div>
+   <div>
+      <img src="./resources/image/Picture7.png" alt="Logo" width="50px" height="50px" style="position: absolute; top: 0px; left: 150px;">  
+   </div>  
+</div>
+
+<div id="core" style="position: relative; left:0px;" >
+ 
+   <div id="map"></div>
+   
+   <div style="position: relative; top: -350px; left: 1100px;">
+      <div class="row">
+         <input class="in_" type="number" id="in_x" name="in_x" onkeyup="in_()" onchange="in_()" value="0" step="0.1" min="-100" max="100">
+         <input class="bar range_" type="range" id="range_x"  name="range_x" onchange="range_()" onmousemove="range_()" value="0.0" step="0.1" min="-100.0" max="100.0"/>
+         <div class="row">
+            <input class="in_" type="number" id="in_y" name="in_y" onkeyup="in_()" onchange="in_()" value="0" step="0.1" min="-100" max="100" >
+            <input class="bar range_" type="range" id="range_y" name="range_y" onchange="range_()" onmousemove="range_()" value="0.0" step="0.1" min="-100.0" max="100.0"/>
+            <div class="row"> 
+               <input class="in_" type="number" id="in_yaw" name="in_yaw" onkeyup="in_()" onchange="in_()" value="0" step="1" min="0" max="360">
+               <input class="bar range_" type="range" id="range_yaw" name="range_yaw" onchange="range_()" onmousemove="range_()" value="0.0" step="1" min="0" max="360"/>
+               <div style="position: relative; top:-240px; left: -80px; z-index: -2;">
+                  <div class="row1">
+                     <h1>X</h1>
+                     <div class="row1">
+                        <h1>Y</h1>
+                        <div class="row1">
+                           <h1>Yaw</h1>    
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div style="position: relative; top:-200px; left: -80px; ">
+                  <input type="button" value="Save Point" style="font-size: 30px; width: 200px; height: 50px;" onclick="save_point()">
+                  <input type="button" value="Run Test" style="font-size: 30px; width: 200px; height: 50px; position: relative; left: 50px;" onclick="run_test()">
+                  <input type="button" value="Run Stop" style="font-size: 30px; width: 200px; height: 50px; position: relative; left: 100px;" onclick="run_stop()">
+                  <input type="button" value="Co1ntinue" style="font-size: 30px; width: 200px; height: 50px; position: relative; left: 150px;" onclick="running()">
+               </div>
+            </div>
+         </div>
+      </div>
+      <div style="position: relative; top: -475px;">
+         <select id="map_name" style="font-size: 30px; width: 200px; height: 50px;">
+         </select>
+         <input type="button" value="Start" style="font-size: 30px; width: 100px; height: 50px; position: relative; left: 10px;" onclick="run_map()">
+         <b style="font-size: 30px; width: 200px; height: 50px; position: relative; left: 40px;"">Name Point</b>
+         <input type="text" id="map_point" style="font-size: 30px; width: 200px; height: 50px; position: relative; left: 50px;">
+         </input>
+      </div>
+   </div>
+</div>
+</body>
+</html>
